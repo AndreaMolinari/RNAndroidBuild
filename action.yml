@@ -1,0 +1,116 @@
+name: React Native Android Build
+description: Build a React Native Android App and Deploy it on the Play Store
+
+author: Andrea Molinari
+
+branding:
+  color: purple
+  icon: arrow-up-circle
+
+# momentaneamente channel viene ignorato
+
+inputs:
+  package-name:
+    description: Package Name
+    required: true
+  KEYSTORE64:
+    description: Android keystore base64
+    required: true
+  ANDROID_KEY_PASSWORD:
+    description: Android keystore password
+    required: true
+  ANDROID_ALIAS:
+    description: Android keystore alias
+    required: true
+  ANDROID_ALIAS_PASS:
+    description: Android keystore alias password
+    required: true
+  NPM_TOKEN:
+    description: Token npm necessario se hai installato dei pacchetti privati
+    required: false
+  SERVICE_ACCOUNT_JSON:
+    description: Permette il deploy su Play Store
+    required: false
+  channel: 
+    description: Release channel -> internal|alpha|beta|production
+    required: false
+
+runs:
+  using: composite
+  
+  steps:
+    - id: playstore
+      shell: bash
+      env:
+        SERVICE_ACCOUNT_JSON: ${{ inputs.SERVICE_ACCOUNT_JSON }}
+      run: |
+        playstore=false
+        if [-n "$SERVICE_ACCOUNT_JSON"]; then
+          playstore=true
+        fi
+        echo "PLAY_STORE=$playstore" >> $GITHUB_OUTPUT
+
+    - id: decode_keystore
+      uses: timheuer/base64-to-file@v1
+      with:
+        fileName: "release.keystore"
+        encodedString: ${{ inputs.KEYSTORE64 }}
+
+    - name: Copy keystore
+      shell: bash
+      run: cp ${{ steps.decode_keystore.outputs.filePath }} ./android/app
+
+    - name: Set Node Env
+      uses: actions/setup-node@v3
+      with:
+        registry-url: 'https://registry.npmjs.org/'
+        node-version: 18
+
+    - name: Install dependeces
+      shell: bash
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.NPM_TOKEN }}
+      run: yarn install --frozen-lockfile
+
+    - name: Get version from package
+      id: package-version
+      uses: martinbeentjes/npm-get-version-action@v1.3.1
+
+    - name: Update gradle version
+      uses: damienaicheh/update-android-version-gradle-action@v1.0.0
+      with:
+        build-gradle-path: "./android/app/build.gradle"
+        version-code: ${{github.run_number}}
+        version-name: ${{steps.package-version.outputs.current-version}}
+        print-file: true
+
+    - name: Build Release Mode 🔨
+      shell: bash
+      id: build_release
+      run: cd android && ./gradlew bundleRelease
+      env:
+        SIGNING_STORE_PASSWORD: ${{ inputs.ANDROID_KEY_PASSWORD }}
+        SIGNING_KEY_ALIAS: ${{ inputs.ANDROID_ALIAS }}
+        SIGNING_KEY_PASSWORD: ${{ inputs.ANDROID_ALIAS_PASS }}
+
+    - name: Upload Artifact
+      if: steps.playstore.outputs.PLAY_STORE == false
+      uses: actions/upload-artifact@v3
+      with:
+        name: app-release.aab
+        path: ./android/app/build/outputs/bundle/release
+
+    - name: Creazione file SERVICE_ACCOUNT_JSON
+      shell: bash
+      if: steps.playstore.outputs.PLAY_STORE == true
+      run: echo '${{ inputs.SERVICE_ACCOUNT_JSON }}' > service_account.json
+
+    - name: Deploy to Internal 🚀
+      if: steps.playstore.outputs.PLAY_STORE == true
+      uses: r0adkll/upload-google-play@v1
+      with:
+        serviceAccountJson: service_account.json
+        packageName: ${{ inputs.package-name }}
+        releaseFiles: ./android/app/build/outputs/bundle/release/app-release.aab
+        track: internal
+        # whatsNewDirectory: distribution/ # se ho capito bene sono i changelog ma li vuole strani
