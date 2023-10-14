@@ -1,0 +1,26 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    types:
+      - closed
+
+permissions: write-all
+
+jobs:
+  my-job:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/Checkout@v4
+      - uses: actions/setup-node@v3
+      - id: release
+        uses: AndreaMolinari/rn-conventional-release@feat-update-projects-version
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: 'true'
+          pre-release-name: 'aplha'
+          upgrade-app-version: 'none'
