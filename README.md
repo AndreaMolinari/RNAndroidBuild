@@ -4,6 +4,8 @@
 
 This action is designed to simplify the development and distribution process of your React Native applications. Whether you're looking to automate the Gradle file update before each build or streamline the release process to the Play Store, this action provides the ideal solution.
 
+Additionally, the number of builds in the build.gradle file is automatically updated with the workflow execution count.
+
 ## Usage
 
 **Requirements:**
