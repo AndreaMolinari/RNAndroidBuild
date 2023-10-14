@@ -16,9 +16,10 @@ jobs:
 
     steps:
       - uses: actions/Checkout@v4
+      
       - uses: actions/setup-node@v3
-      - id: release
-        uses: AndreaMolinari/rn-conventional-release@feat-update-projects-version
+      
+      - uses: AndreaMolinari/rn-conventional-release@feat-update-projects-version
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: 'true'
