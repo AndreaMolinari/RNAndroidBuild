@@ -34,6 +34,10 @@ inputs:
   channel: 
     description: Release channel -> internal|alpha|beta|production
     required: false
+  changesNotSentForReview: 
+    description: Var for r0adkll/upload-google-play@v1
+    required: false
+    default: 'false'
 
 runs:
   using: composite
@@ -94,6 +98,16 @@ runs:
       if: inputs.SERVICE_ACCOUNT_JSON != ''
       run: echo '${{ inputs.SERVICE_ACCOUNT_JSON }}' > service_account.json
 
+
+    - name: Convert input values
+      shell: bash
+      run: |
+        if [[ "${{ inputs.MY_BOOL_INPUT }}" == "true" ]]; then
+          echo "NOT_SENT_REVIEW=true" >> $GITHUB_ENV
+        else
+          echo "NOT_SENT_REVIEW=false" >> $GITHUB_ENV
+        fi
+
     - name: Deploy to Internal 🚀
       if: inputs.SERVICE_ACCOUNT_JSON != ''
       uses: r0adkll/upload-google-play@v1
@@ -101,5 +115,6 @@ runs:
         serviceAccountJson: service_account.json
         packageName: ${{ inputs.package-name }}
         releaseFiles: ./android/app/build/outputs/bundle/release/app-release.aab
+        changesNotSentForReview: ${{ env.NOT_SENT_REVIEW }}
         track: internal
         # whatsNewDirectory: distribution/ # se ho capito bene sono i changelog ma li vuole strani
