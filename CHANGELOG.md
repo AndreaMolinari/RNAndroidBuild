@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## 1.1.0 (2024-07-19)
+
+
+### Features
+
+* :sparkles: ora puoi scegliere se la review deve essere inviata o no ([f7104ba](https://github.com/AndreaMolinari/RNAndroidBuild/commit/f7104ba77fd58150a37369d7a3eed2a01136963d))
+
 ### 1.0.1 (2023-10-14)
 
 
