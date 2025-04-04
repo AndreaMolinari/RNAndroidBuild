@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### 1.0.1 (2025-04-04)
+
+
+### Bug Fixes
+
+* update upload-artifact action to version 4 ([51ecb51](https://github.com/AndreaMolinari/RNAndroidBuild/commit/51ecb51805007d4226f68b2b5d2aece72907dd37))
+
 ## 1.1.0 (2024-07-19)
 
 
