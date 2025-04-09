@@ -59,6 +59,12 @@ runs:
         registry-url: 'https://registry.npmjs.org/'
         node-version: 18
 
+    - name: Set Java 11
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+
     - name: Install dependeces
       shell: bash
       env:
