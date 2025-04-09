@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## 1.1.0 (2025-04-09)
+
+
+### Features
+
+* add Java 11 setup step to the build process ([099dce6](https://github.com/AndreaMolinari/RNAndroidBuild/commit/099dce6f3e1525589f398ba7864a3dbcfb23fe18))
+
 ### 1.0.1 (2025-04-04)
 
 
