@@ -63,7 +63,7 @@ runs:
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
-        java-version: '11'
+        java-version: '21'
 
     - name: Install dependeces
       shell: bash
