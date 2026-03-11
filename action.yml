@@ -7,14 +7,12 @@ branding:
   color: purple
   icon: arrow-up-circle
 
-# momentaneamente channel viene ignorato
-
 inputs:
   package-name:
-    description: Package Name
+    description: Android app package name
     required: true
   KEYSTORE64:
-    description: Android keystore base64
+    description: Android keystore encoded in base64
     required: true
   ANDROID_KEY_PASSWORD:
     description: Android keystore password
@@ -26,40 +24,65 @@ inputs:
     description: Android keystore alias password
     required: true
   NPM_TOKEN:
-    description: Token npm necessario se hai installato dei pacchetti privati
+    description: Token for private npm packages
     required: false
   SERVICE_ACCOUNT_JSON:
-    description: Permette il deploy su Play Store
+    description: Google Play service account JSON — enables Play Store deployment
     required: false
-  channel: 
-    description: Release channel -> internal|alpha|beta|production
+  track:
+    description: Play Store release track (internal | alpha | beta | production)
     required: false
-  changesNotSentForReview: 
-    description: Var for r0adkll/upload-google-play@v1
+    default: internal
+  changesNotSentForReview:
+    description: Do not send changes for review on Play Store
     required: false
     default: 'false'
   nodeVersion:
-    description: Node version to use
+    description: Node.js version
     required: false
     default: "18"
   javaVersion:
-    description: JAVA version to use
+    description: Java version
     required: false
     default: "21"
   javaDistribution:
-    description: JAVA distribution to use
+    description: Java distribution (temurin | adopt | zulu | ...)
     required: false
     default: "temurin"
-  useNPM: 
-    description: "Force NPM usage"
+  useNPM:
+    description: Use NPM instead of Yarn
     required: false
     default: 'false'
 
 runs:
   using: composite
-  
+
   steps:
-    - id: decode_keystore
+    - name: Setup Node ${{ inputs.nodeVersion }}
+      uses: actions/setup-node@v4
+      with:
+        registry-url: 'https://registry.npmjs.org/'
+        node-version: ${{ inputs.nodeVersion }}
+        cache: ${{ inputs.useNPM == 'true' && 'npm' || 'yarn' }}
+
+    - name: Setup Java ${{ inputs.javaVersion }}
+      uses: actions/setup-java@v4
+      with:
+        distribution: ${{ inputs.javaDistribution }}
+        java-version: ${{ inputs.javaVersion }}
+
+    - name: Cache Gradle
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Decode keystore
+      id: decode_keystore
       uses: timheuer/base64-to-file@v1
       with:
         fileName: "release.keystore"
@@ -69,45 +92,33 @@ runs:
       shell: bash
       run: cp ${{ steps.decode_keystore.outputs.filePath }} ./android/app
 
-    - name: Set Node Env
-      uses: actions/setup-node@v4
-      with:
-        registry-url: 'https://registry.npmjs.org/'
-        node-version: ${{ inputs.nodeVersion }}
-
-    - name: Set Java 21
-      uses: actions/setup-java@v4
-      with:
-        distribution: ${{ inputs.javaDistribution }}
-        java-version: ${{ inputs.javaVersion }}
-
-    - name: Install dependeces with YARN
+    - name: Install dependencies with Yarn
       shell: bash
       if: inputs.useNPM == 'false'
       env:
         NODE_AUTH_TOKEN: ${{ inputs.NPM_TOKEN }}
       run: yarn install --frozen-lockfile
 
-    - name: Install dependeces with NPM
+    - name: Install dependencies with NPM
       shell: bash
       if: inputs.useNPM == 'true'
       env:
         NODE_AUTH_TOKEN: ${{ inputs.NPM_TOKEN }}
       run: npm ci
 
-    - name: Get version from package
+    - name: Get version from package.json
       id: package-version
       uses: martinbeentjes/npm-get-version-action@v1.3.1
 
-    - name: Update gradle version
+    - name: Update build.gradle version
       uses: damienaicheh/update-android-version-gradle-action@v1.0.0
       with:
         build-gradle-path: "./android/app/build.gradle"
-        version-code: ${{github.run_number}}
-        version-name: ${{steps.package-version.outputs.current-version}}
+        version-code: ${{ github.run_number }}
+        version-name: ${{ steps.package-version.outputs.current-version }}
         print-file: true
 
-    - name: Build Release Mode 🔨
+    - name: Build Release 🔨
       shell: bash
       id: build_release
       run: cd android && ./gradlew bundleRelease
@@ -123,28 +134,17 @@ runs:
         name: app-release.aab
         path: ./android/app/build/outputs/bundle/release
 
-    - name: Creazione file SERVICE_ACCOUNT_JSON
+    - name: Write service account JSON
       shell: bash
       if: inputs.SERVICE_ACCOUNT_JSON != ''
       run: echo '${{ inputs.SERVICE_ACCOUNT_JSON }}' > service_account.json
 
-
-    - name: Convert input values
-      shell: bash
-      run: |
-        if [[ "${{ inputs.MY_BOOL_INPUT }}" == "true" ]]; then
-          echo "NOT_SENT_REVIEW=true" >> $GITHUB_ENV
-        else
-          echo "NOT_SENT_REVIEW=false" >> $GITHUB_ENV
-        fi
-
-    - name: Deploy to Internal 🚀
+    - name: Deploy to Play Store 🚀
       if: inputs.SERVICE_ACCOUNT_JSON != ''
       uses: r0adkll/upload-google-play@v1
       with:
         serviceAccountJson: service_account.json
         packageName: ${{ inputs.package-name }}
         releaseFiles: ./android/app/build/outputs/bundle/release/app-release.aab
-        changesNotSentForReview: ${{ env.NOT_SENT_REVIEW }}
-        track: internal
-        # whatsNewDirectory: distribution/ # se ho capito bene sono i changelog ma li vuole strani
+        track: ${{ inputs.track }}
+        changesNotSentForReview: ${{ inputs.changesNotSentForReview }}
